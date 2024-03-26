@@ -4,31 +4,70 @@ namespace LegacyApp
 {
     public class UserService
     {
+        private ClientRepository _clientRepository;
+        private UserCreditService _userCreditService;
+
+        public UserService()
+        {
+            _clientRepository = new ClientRepository();
+            _userCreditService = new UserCreditService();
+        }
+
         public bool AddUser(string firstName, string lastName, string email, DateTime dateOfBirth, int clientId)
         {
-            if (string.IsNullOrEmpty(firstName) || string.IsNullOrEmpty(lastName))
+            if (!ValidateName(firstName, lastName) || !ValidateEmail(email) || !ValidateAge(dateOfBirth))
             {
                 return false;
             }
 
-            if (!email.Contains("@") && !email.Contains("."))
+            var client = _clientRepository.GetById(clientId);
+            if (client == null)
             {
                 return false;
             }
 
+            var user = GetUser(firstName, lastName, email, dateOfBirth, client);
+
+            SetUserCreditLimit(client.Type, user);
+
+            if (!ValidateCreditLimit(user))
+            {
+                return false;
+            }
+
+            UserDataAccess.AddUser(user);
+            return true;
+        }
+
+        private bool ValidateName(string firstName, string lastName)
+        {
+            return !string.IsNullOrEmpty(firstName) && !string.IsNullOrEmpty(lastName);
+        }
+
+        private bool ValidateEmail(string email)
+        {
+            if(email == null)
+            {
+                return false;
+            }
+            return email.Contains("@") || email.Contains(".");
+
+        }
+
+        private bool ValidateAge(DateTime dateOfBirth)
+        {
             var now = DateTime.Now;
             int age = now.Year - dateOfBirth.Year;
-            if (now.Month < dateOfBirth.Month || (now.Month == dateOfBirth.Month && now.Day < dateOfBirth.Day)) age--;
-
-            if (age < 21)
+            if (now.Month < dateOfBirth.Month || (now.Month == dateOfBirth.Month && now.Day < dateOfBirth.Day))
             {
-                return false;
+                age--;
             }
+            return age >= 21;
+        }
 
-            var clientRepository = new ClientRepository();
-            var client = clientRepository.GetById(clientId);
-
-            var user = new User
+        private User GetUser(string firstName, string lastName, string email, DateTime dateOfBirth, Client client)
+        {
+            return new User
             {
                 Client = client,
                 DateOfBirth = dateOfBirth,
@@ -36,37 +75,29 @@ namespace LegacyApp
                 FirstName = firstName,
                 LastName = lastName
             };
+        }
 
-            if (client.Type == "VeryImportantClient")
+        private void SetUserCreditLimit(string clientType, User user)
+        {
+            if (clientType == "VeryImportantClient")
             {
                 user.HasCreditLimit = false;
-            }
-            else if (client.Type == "ImportantClient")
-            {
-                using (var userCreditService = new UserCreditService())
-                {
-                    int creditLimit = userCreditService.GetCreditLimit(user.LastName, user.DateOfBirth);
-                    creditLimit = creditLimit * 2;
-                    user.CreditLimit = creditLimit;
-                }
             }
             else
             {
                 user.HasCreditLimit = true;
-                using (var userCreditService = new UserCreditService())
+                int creditLimit = _userCreditService.GetCreditLimit(user.LastName, user.DateOfBirth);
+                if (clientType == "ImportantClient")
                 {
-                    int creditLimit = userCreditService.GetCreditLimit(user.LastName, user.DateOfBirth);
-                    user.CreditLimit = creditLimit;
+                    creditLimit *= 2;
                 }
+                user.CreditLimit = creditLimit;
             }
+        }
 
-            if (user.HasCreditLimit && user.CreditLimit < 500)
-            {
-                return false;
-            }
-
-            UserDataAccess.AddUser(user);
-            return true;
+        private bool ValidateCreditLimit(User user)
+        {
+            return !user.HasCreditLimit || user.CreditLimit >= 500;
         }
     }
 }
