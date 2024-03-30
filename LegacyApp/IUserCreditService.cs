@@ -8,6 +8,6 @@ namespace LegacyApp
 {
     public interface IUserCreditService
     {
-        int GetCreditLimit(string lastName, DateTime dateOfBirth);
+        public int GetCreditLimit(string lastName, DateTime dateOfBirth);
     }
 }
