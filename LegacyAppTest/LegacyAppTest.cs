@@ -9,7 +9,7 @@ namespace LegacyAppTest
         [SetUp]
         public void Setup()
         {
-            _userService = new UserService();
+            _userService = new UserService(new ClientRepository(), new UserCreditService(), new UserDataAccessAdapter());
         }
 
         [Test]
@@ -46,6 +46,20 @@ namespace LegacyAppTest
             string firstName = "Black";
             string lastName = "Smith";
             string email = "test";
+            DateTime dateOfBirth = DateTime.Parse("1900-01-01");
+            int clientId = 1;
+
+            bool result = _userService.AddUser(firstName, lastName, email, dateOfBirth, clientId);
+
+            Assert.IsFalse(result);
+        }
+
+        [Test]
+        public void AddUser_NullEmail_ReturnsFalse()
+        {
+            string firstName = "Black";
+            string lastName = "Smith";
+            string email = null;
             DateTime dateOfBirth = DateTime.Parse("1900-01-01");
             int clientId = 1;
 

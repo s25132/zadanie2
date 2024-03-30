@@ -4,13 +4,25 @@ namespace LegacyApp
 {
     public class UserService
     {
-        private ClientRepository _clientRepository;
-        private UserCreditService _userCreditService;
+        private IClientRepository _clientRepository;
+        private IUserCreditService _userCreditService;
+        private IUserDataAccess _userDataAccess;
 
+        [Obsolete("Constructor UserService() is deprecated, please use UserService(IClientRepository clientRepository, IUserCreditService userCreditService, IUserDataAccess userDataAccess).")]
         public UserService()
         {
             _clientRepository = new ClientRepository();
             _userCreditService = new UserCreditService();
+            _userDataAccess = new UserDataAccessAdapter();
+
+        }
+
+        public UserService(IClientRepository clientRepository, IUserCreditService userCreditService, IUserDataAccess userDataAccess)
+        {
+            _clientRepository = clientRepository;
+            _userCreditService = userCreditService;
+            _userDataAccess = userDataAccess;
+
         }
 
         public bool AddUser(string firstName, string lastName, string email, DateTime dateOfBirth, int clientId)
@@ -35,7 +47,7 @@ namespace LegacyApp
                 return false;
             }
 
-            UserDataAccess.AddUser(user);
+            _userDataAccess.AddUser(user);
             return true;
         }
 
